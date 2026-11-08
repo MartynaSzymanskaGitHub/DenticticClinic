@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{emailConfirmation.title}">Potwierdzenie rejestracji</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{common.brand}">Radwańska-Dent</a>
+        <div class="navbar-links">
+            <a th:href="@{/user/emailConfirmation(lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/user/emailConfirmation(lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    <div class="auth-box">
+        <h2 class="auth-title" th:text="#{emailConfirmation.title}">Sprawdź swoją skrzynkę e-mail</h2>
+        <p th:text="#{emailConfirmation.message}">Na podany adres e-mail wysłaliśmy link aktywacyjny. Kliknij go, aby aktywować konto.</p>
+        <div class="auth-footer">
+            <a th:href="@{/login}" class="btn btn-green" th:text="#{emailConfirmation.backToLogin}">Przejdź do logowania</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

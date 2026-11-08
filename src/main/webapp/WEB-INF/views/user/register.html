@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{registerForm.title}">Rejestracja</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{common.brand}">Radwańska-Dent</a>
+        <div class="navbar-links">
+            <a th:href="@{/user/register(lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/user/register(lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    <div class="auth-box">
+        <h2 class="auth-title" th:text="#{registerForm.title}">Rejestracja</h2>
+
+        <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+        <form th:action="@{/user/register}" th:object="${userDto}" method="post">
+
+            <div th:if="${#fields.hasGlobalErrors()}" class="alert-error">
+                <div th:each="err : ${#fields.globalErrors()}" th:text="${err}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="firstName" class="form-label" th:text="#{registerForm.firstName}">Imię</label>
+                <input type="text" id="firstName" th:field="*{firstName}" class="form-input" autocomplete="given-name">
+                <div class="field-error" th:if="${#fields.hasErrors('firstName')}" th:errors="*{firstName}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="lastName" class="form-label" th:text="#{registerForm.lastName}">Nazwisko</label>
+                <input type="text" id="lastName" th:field="*{lastName}" class="form-input" autocomplete="family-name">
+                <div class="field-error" th:if="${#fields.hasErrors('lastName')}" th:errors="*{lastName}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label" th:text="#{registerForm.email}">Email</label>
+                <input type="email" id="email" th:field="*{email}" class="form-input" autocomplete="username">
+                <div class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone" class="form-label" th:text="#{registerForm.phone}">Telefon</label>
+                <input type="tel" id="phone" th:field="*{phone}" class="form-input" autocomplete="tel">
+                <div class="field-error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="new-password" class="form-label" th:text="#{registerForm.password}">Hasło</label>
+                <input type="password" id="new-password" th:field="*{password}" class="form-input" autocomplete="new-password">
+                <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="gender" class="form-label" th:text="#{registerForm.gender}">Płeć</label>
+                <select id="gender" th:field="*{gender}" class="form-select">
+                    <option value="WOMAN" th:text="#{registerForm.gender.WOMAN}">Kobieta</option>
+                    <option value="MAN" th:text="#{registerForm.gender.MAN}">Mężczyzna</option>
+                    <option value="OTHER" th:text="#{registerForm.gender.OTHER}">Inna</option>
+                </select>
+                <div class="field-error" th:if="${#fields.hasErrors('gender')}" th:errors="*{gender}"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="role" class="form-label" th:text="#{label.role}">Rola</label>
+                <select id="role" th:field="*{role}" class="form-select">
+                    <option value="CLIENT" th:text="#{registerForm.role.CLIENT}">Pacjent</option>
+                    <option value="DENTIST" th:text="#{registerForm.role.DENTIST}">Lekarz</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <div class="g-recaptcha" th:attr="data-sitekey=${recaptchaSiteKey}"></div>
+            </div>
+
+            <button type="submit" class="btn btn-green btn-full" th:text="#{registerForm.submit}">Zarejestruj się</button>
+        </form>
+
+        <div class="auth-footer">
+            <span th:text="#{registerForm.hasAccount}">Masz już konto?</span>
+            <a th:href="@{/login}" th:text="#{registerForm.loginLink}">Zaloguj się</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{appointment.list.pageTitle}">Moje wizyty - Radwańska-Dent</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{appointment.list.brand}">Radwańska-Dent - Moje wizyty</a>
+        <div class="navbar-links">
+            <a th:href="@{/appointment/book}" class="btn btn-green" th:text="#{appointment.list.bookNew}">Umów nową wizytę</a>
+            <a th:href="@{/user/profile}" class="btn btn-mint" th:text="#{nav.myProfile}">Moje dane</a>
+            <a th:href="@{/home}" class="btn btn-mint" th:text="#{nav.home}">Strona główna</a>
+            <form th:action="@{/logout}" method="post" class="inline-form">
+                <button type="submit" class="btn btn-blue" th:text="#{label.logout}">Wyloguj</button>
+            </form>
+            <a th:href="@{/appointment/my(page=${currentPage}, lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/appointment/my(page=${currentPage}, lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+
+    <div th:if="${success}" class="alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+    <div class="section-box">
+        <h3 class="section-title" th:text="#{appointment.list.title}">Moje wizyty i płatności</h3>
+        <p style="font-size: 13px; color: #3E885B; margin-bottom: 18px;" th:text="#{appointment.list.unpaidWarning}">
+            Uwaga: Nieopłacone rezerwacje są automatycznie anulowane przez system po 2 minutach.
+        </p>
+
+        <div th:if="${#lists.isEmpty(appointments)}" class="alert-info" th:text="#{appointment.list.empty}">
+            Nie masz jeszcze żadnych zarezerwowanych wizyt.
+        </div>
+
+        <div class="appointments-list" th:if="${!#lists.isEmpty(appointments)}">
+            <div class="appointment-card" th:each="app : ${appointments}">
+
+                <div class="appointment-header">
+                    <div>
+                        <span class="appointment-id" th:text="'#' + ${app.id}">#1</span>
+                        <span class="appointment-date" th:text="${#temporals.format(app.dateTime, 'dd-MM-yyyy HH:mm')}">20-10-2026 11:00</span>
+                    </div>
+
+                    <div>
+                        <span th:if="${app.status.name() == 'PENDING_PAYMENT'}" class="status-inactive" th:text="#{appointment.status.PENDING_PAYMENT}">Oczekuje na płatność</span>
+                        <span th:if="${app.status.name() == 'CONFIRMED'}" class="status-active" th:text="#{appointment.status.CONFIRMED}">Opłacona / Potwierdzona</span>
+                        <span th:if="${app.status.name() == 'COMPLETED'}" class="status-active" th:text="#{appointment.status.COMPLETED}">Zrealizowana</span>
+                        <span th:if="${app.status.name() == 'CANCELLED'}" class="status-inactive" th:text="#{appointment.status.CANCELLED}">Odwołana</span>
+                    </div>
+                </div>
+
+                <div class="appointment-body">
+                    <div class="appointment-col">
+                        <span class="appointment-label" th:text="#{common.doctor}">Lekarz</span>
+                        <span class="appointment-value" th:text="#{home.dentists.prefix} + ' ' + ${app.dentist.firstName} + ' ' + ${app.dentist.lastName}">lek. dent. Ewa Nowak</span>
+                    </div>
+
+                    <div class="appointment-col">
+                        <span class="appointment-label" th:text="#{common.room}">Gabinet</span>
+                        <span class="appointment-value" th:text="${app.room.name}">Gabinet 1</span>
+                    </div>
+
+                    <div class="appointment-col">
+                        <span class="appointment-label" th:text="#{appointment.list.selectedTreatments}">Wybrane zabiegi</span>
+                        <div>
+                            <span class="treatment-pill" th:each="t : ${app.treatments}"
+                                  th:text="${#messages.msgOrNull('treatment.name.' + t.id) != null ? #messages.msg('treatment.name.' + t.id) : t.name}">Zabieg</span>
+                        </div>
+                    </div>
+
+                    <div class="appointment-col">
+                        <span class="appointment-label" th:text="#{appointment.list.amountToPay}">Kwota do zapłaty</span>
+                        <span class="appointment-value" th:text="${app.payment != null ? app.payment.amount + ' ' + #messages.msg('common.currency') : '-'}">280.00 PLN</span>
+                    </div>
+                </div>
+
+                <div class="appointment-actions"
+                     th:if="${app.status.name() == 'PENDING_PAYMENT' or app.status.name() == 'CONFIRMED' or (app.payment != null and app.payment.paid)}">
+
+                    <form th:if="${app.status.name() == 'PENDING_PAYMENT'}"
+                          th:action="@{/appointment/pay/{id}(id=${app.id}, page=${currentPage})}"
+                          method="post" class="inline-form">
+                        <button type="submit" class="btn btn-green btn-action" th:text="#{common.pay}">Opłać</button>
+                    </form>
+
+                    <form th:if="${(app.status.name() == 'PENDING_PAYMENT' or app.status.name() == 'CONFIRMED') and #temporals.createNow().isBefore(app.dateTime.minusMinutes(30))}"
+                          th:action="@{/appointment/cancel/{id}(id=${app.id}, page=${currentPage})}"
+                          method="post" class="inline-form">
+                        <button type="submit" class="btn btn-danger btn-action" th:text="#{common.cancelAppointment}">Odwołaj</button>
+                    </form>
+
+                    <button th:if="${(app.status.name() == 'PENDING_PAYMENT' or app.status.name() == 'CONFIRMED') and !#temporals.createNow().isBefore(app.dateTime.minusMinutes(30))}"
+                            type="button" class="btn btn-action" style="background-color: #d1d5db; color: #6b7280; cursor: not-allowed;"
+                            disabled th:title="#{appointment.cancel.error.timeLimit}" th:text="#{common.cancelAppointment}">Odwołaj</button>
+
+                    <a th:if="${app.payment != null and app.payment.paid}"
+                       th:href="@{/invoice/generate/{userId}(userId=${currentUser.id}, appointmentId=${app.id})}"
+                       target="_blank"
+                       class="btn btn-blue btn-action" th:text="#{common.invoicePdf}">Faktura PDF</a>
+
+                    <a th:each="rec : ${app.recipes}"
+                       th:href="@{/recipe/pdf/{id}(id=${rec.id})}"
+                       class="btn btn-mint btn-action"
+                       target="_blank"
+                       th:text="#{common.recipePdf(${rec.id})}">Recepta PDF</a>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="pagination-bar" th:if="${totalPages > 1}">
+            <a th:href="@{/appointment/my(page=${currentPage - 1})}"
+               class="pagination-btn"
+               th:classappend="${currentPage == 0} ? 'disabled' : ''" th:text="#{pagination.previousArrow}">« Poprzednia</a>
+
+            <a th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+               th:href="@{/appointment/my(page=${i})}"
+               th:text="${i + 1}"
+               class="pagination-btn"
+               th:classappend="${i == currentPage} ? 'active' : ''">1</a>
+
+            <a th:href="@{/appointment/my(page=${currentPage + 1})}"
+               class="pagination-btn"
+               th:classappend="${currentPage + 1 >= totalPages} ? 'disabled' : ''" th:text="#{pagination.nextArrow}">Następna »</a>
+
+            <span class="pagination-info" th:text="#{pagination.pageOf(${currentPage + 1}, ${totalPages})}">Strona 1 z 2</span>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

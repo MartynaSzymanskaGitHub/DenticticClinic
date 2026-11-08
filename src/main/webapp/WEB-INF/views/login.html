@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{login.title}">Logowanie</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{common.brand}">Radwańska-Dent</a>
+        <div class="navbar-links">
+            <a th:href="@{/login(lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/login(lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+    <div class="auth-box">
+        <h2 class="auth-title" th:text="#{login.title}">Logowanie</h2>
+
+        <div th:if="${message}" class="alert-success" th:text="${message}"></div>
+        <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+        <div id="jwtLoginError" class="alert-error" style="display: none;" th:text="#{login.error}"></div>
+        <div th:if="${param.logout != null}" class="alert-info" th:text="#{login.logout}"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email" class="form-label" th:text="#{label.login}">Email</label>
+                <input type="email" id="email" name="username" class="form-input" autocomplete="username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="current-password" class="form-label" th:text="#{label.password}">Hasło</label>
+                <input type="password" id="current-password" name="password" class="form-input" autocomplete="current-password" required>
+            </div>
+
+            <button type="submit" class="btn btn-green btn-full" th:text="#{label.submit}">Zaloguj się</button>
+        </form>
+
+        <div class="auth-footer">
+            <span th:text="#{login.noAccount}">Nie masz konta?</span>
+            <a th:href="@{/user/register}" th:text="#{login.registerLink}">Zarejestruj się</a>
+        </div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    document.getElementById('loginForm').addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const errorBox = document.getElementById('jwtLoginError');
+        errorBox.style.display = 'none';
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('current-password').value;
+
+        try {
+            const loginUrl = '/api/auth/login';
+            const homeUrl = '/home';
+            const response = await fetch(loginUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ email: email, password: password })
+            });
+
+            if (response.ok) {
+                window.location.href = homeUrl;
+            } else {
+                errorBox.style.display = 'block';
+            }
+        } catch (err) {
+            errorBox.style.display = 'block';
+        }
+    });
+</script>
+</body>
+</html>

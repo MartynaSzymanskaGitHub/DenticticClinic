@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{appointment.booking.pageTitle}">Umów wizytę - Radwańska-Dent</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{appointment.booking.brand}">Radwańska-Dent - Rezerwacja wizyty</a>
+        <div class="navbar-links">
+            <a th:href="@{/appointment/my}" class="btn btn-green" th:text="#{home.nav.myAppointments}">Moje wizyty</a>
+            <a th:href="@{/user/profile}" class="btn btn-mint" th:text="#{nav.myProfile}">Moje dane</a>
+            <a th:href="@{/home}" class="btn btn-mint" th:text="#{nav.home}">Strona główna</a>
+            <form th:action="@{/logout}" method="post" class="inline-form">
+                <button type="submit" class="btn btn-blue" th:text="#{label.logout}">Wyloguj</button>
+            </form>
+            <a th:href="@{/appointment/book(treatmentId=${selectedTreatmentId}, lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/appointment/book(treatmentId=${selectedTreatmentId}, lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+
+    <div th:if="${success}" class="alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+    <div class="section-box">
+        <h3 class="section-title" th:text="#{appointment.booking.step1}">Krok 1: Wybierz dzień wizyty oraz zabiegi</h3>
+
+        <form th:action="@{/appointment/available-slots}" method="get">
+            <div class="form-group">
+                <label for="date" class="form-label" th:text="#{appointment.booking.selectDate}">Wybierz datę wizyty</label>
+                <input type="date"
+                       id="date"
+                       name="date"
+                       th:value="${defaultDate}"
+                       th:min="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"
+                       class="form-input"
+                       style="max-width: 280px;"
+                       required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" th:text="#{appointment.booking.selectTreatments}">Zaznacz zabiegi (możesz wybrać jeden lub kilka)</label>
+                <div class="treatments-grid">
+                    <label class="treatment-card"
+                           th:each="t, iterStat : ${appointment.treatmentList}"
+                           th:for="'treatment-' + ${t.id}"
+                           style="cursor: pointer;">
+                        <div>
+                            <div class="treatment-top">
+                                <span class="treatment-number" th:text="${iterStat.count < 10 ? '0' + iterStat.count : iterStat.count}">01</span>
+                                <input type="checkbox"
+                                       name="treatmentIds"
+                                       th:value="${t.id}"
+                                       th:id="'treatment-' + ${t.id}"
+                                       th:checked="${selectedTreatmentId != null and selectedTreatmentId == t.id}"
+                                       style="width: 20px; height: 20px;">
+                            </div>
+                            <h4 class="treatment-name"
+                                th:text="${#messages.msgOrNull('treatment.name.' + t.id) != null ? #messages.msg('treatment.name.' + t.id) : t.name}">Nazwa zabiegu</h4>
+                            <p class="treatment-desc"
+                               th:text="${#messages.msgOrNull('treatment.desc.' + t.id) != null ? #messages.msg('treatment.desc.' + t.id) : t.description}">Opis zabiegu</p>
+                        </div>
+
+                        <div class="treatment-info" style="margin-bottom: 0;">
+                            <span class="treatment-duration" th:text="#{home.treatments.duration} + ': ' + ${t.estimatedMinutes} + ' ' + #{home.treatments.minutes}">30 min</span>
+                            <span class="treatment-price" th:text="${t.price} + ' ' + #{common.currency}">150 PLN</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn-green" th:text="#{appointment.booking.checkSlots}">Sprawdź dostępne terminy</button>
+            </div>
+        </form>
+    </div>
+
+</div>
+
+</body>
+</html>

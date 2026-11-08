@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{appointment.slots.pageTitle}">Dostępne terminy - Radwańska-Dent</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{appointment.slots.brand}">Radwańska-Dent - Dostępne terminy</a>
+        <div class="navbar-links">
+            <a th:href="@{/appointment/book}" class="btn btn-mint" th:text="#{appointment.slots.changeSelection}">Zmień datę / zabiegi</a>
+            <a th:href="@{/home}" class="btn btn-green" th:text="#{nav.home}">Strona główna</a>
+            <a th:href="@{/appointment/available-slots(date=${selectedDate}, treatmentIds=${treatmentIds}, lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/appointment/available-slots(date=${selectedDate}, treatmentIds=${treatmentIds}, lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+
+    <div th:if="${success}" class="alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+    <div class="section-box">
+        <h3 class="section-title" th:text="#{appointment.slots.step2(${#temporals.format(selectedDate, 'dd-MM-yyyy')})}">Krok 2: Wybierz godzinę wizyty</h3>
+        <p>
+            <strong th:text="#{appointment.slots.selectedTreatments}">Wybrane zabiegi:</strong>
+            <span th:each="t, stat : ${selectedTreatments}"
+                  th:text="(${#messages.msgOrNull('treatment.name.' + t.id) != null ? #messages.msg('treatment.name.' + t.id) : t.name}) + (${!stat.last ? ', ' : ''})"></span>
+        </p>
+    </div>
+
+    <div th:if="${#maps.isEmpty(treatmentSlots)}" class="section-box">
+        <div class="alert-info" th:text="#{appointment.slots.empty}">
+            Brak wolnych terminów u lekarzy w wybranym dniu. Wybierz inny dzień wizyty.
+        </div>
+        <a th:href="@{/appointment/book}" class="btn btn-green" th:text="#{appointment.slots.backToDate}">Wróć do wyboru daty</a>
+    </div>
+
+    <div th:each="dentist : ${dentists}"
+         th:if="${treatmentSlots.containsKey(dentist.id) and !#lists.isEmpty(treatmentSlots.get(dentist.id))}"
+         class="section-box">
+        <h3 class="section-title" th:text="#{home.dentists.prefix} + ' ' + ${dentist.firstName} + ' ' + ${dentist.lastName}">Lekarz</h3>
+        <p th:text="#{appointment.slots.clickToConfirm}"></p>
+
+        <div class="form-row">
+            <form th:each="slot : ${treatmentSlots.get(dentist.id)}"
+                  th:action="@{/appointment/book}"
+                  method="post"
+                  class="inline-form">
+                <input type="hidden" name="doctorId" th:value="${dentist.id}">
+                <input type="hidden" name="dateTime" th:value="${#temporals.format(slot, 'yyyy-MM-dd''T''HH:mm')}">
+                <input type="hidden" th:each="tid : ${treatmentIds}" name="treatmentIds" th:value="${tid}">
+                <button type="submit" class="btn btn-green" th:text="${#temporals.format(slot, 'HH:mm')}">09:00</button>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

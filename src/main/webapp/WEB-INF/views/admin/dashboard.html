@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="#{admin.dashboard.pageTitle}">Panel Administratora - Radwańska-Dent</title>
+    <link rel="icon" type="image/png" th:href="@{/resources/photos/zdj1.png}">
+    <link rel="stylesheet" th:href="@{/resources/css/style.css}">
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-container">
+        <a class="navbar-brand" th:href="@{/home}" th:text="#{admin.dashboard.brand}">Radwańska-Dent - Panel Administratora</a>
+        <div class="navbar-links">
+            <a th:href="@{/user/profile}" class="btn btn-mint" th:text="#{nav.myProfile}">Moje dane</a>
+            <a th:href="@{/home}" class="btn btn-mint" th:text="#{nav.home}">Strona główna</a>
+            <form th:action="@{/logout}" method="post" class="inline-form">
+                <button type="submit" class="btn btn-blue" th:text="#{label.logout}">Wyloguj</button>
+            </form>
+            <a th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage}, appointmentPage=${appointmentCurrentPage}, date=${selectedDate}, lang='pl')}" class="btn btn-blue">PL</a>
+            <a th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage}, appointmentPage=${appointmentCurrentPage}, date=${selectedDate}, lang='en')}" class="btn btn-blue">EN</a>
+        </div>
+    </div>
+</nav>
+
+<div class="main-container">
+
+    <div th:if="${success}" class="alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+        <h3 class="section-title" style="margin: 0;" th:text="#{admin.stats.title}">Podsumowanie kliniki</h3>
+        <div>
+            <button type="button" class="btn btn-mint" onclick="fetchClinicStats()" style="padding: 6px 14px; font-size: 13px;"
+                    th:text="#{admin.stats.refreshBtn}">
+                Wyślij żądanie o nowe statystyki
+            </button>
+            <span id="restStatus" style="font-size: 12px; color: #3E885B; margin-left: 10px; font-weight: bold;"></span>
+        </div>
+    </div>
+
+    <div class="stats-row">
+        <div class="stat-card">
+            <h3 class="section-title" th:text="#{admin.stats.completedRevenue}">Przychód (zrealizowane i opłacone wizyty)</h3>
+            <p class="revenue-amount" id="liveRevenue" th:text="${totalRevenue} + ' ' + #{common.currency}">0 PLN</p>
+            <h3 class="section-title" style="margin-top: 16px;" th:text="#{admin.stats.paidRevenue}">Suma za opłacone wizyty</h3>
+            <p class="revenue-amount" id="livePaidRevenue" th:text="${paidRevenue} + ' ' + #{common.currency}">0 PLN</p>
+        </div>
+
+        <div class="stat-card">
+            <h3 class="section-title" th:text="#{admin.stats.totalAppointments}">Wszystkie zarejestrowane wizyty</h3>
+            <p class="revenue-amount" id="liveAppointments" th:text="${totalAppointments != null ? totalAppointments : 0}">0</p>
+        </div>
+
+        <div class="stat-card">
+            <h3 class="section-title" th:text="#{admin.stats.roomUsageTitle}">Statystyki wykorzystania gabinetów</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th th:text="#{admin.stats.roomId}">ID Gabinetu</th>
+                        <th th:text="#{admin.stats.appointmentsCount}">Liczba wizyt (bez odwołanych)</th>
+                    </tr>
+                </thead>
+                <tbody id="liveRoomStats">
+                    <tr th:each="stat : ${roomUsageStatsList}">
+                        <td th:text="${stat.roomNumber}"></td>
+                        <td th:text="${stat.appointmentNumber}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="section-box">
+        <h3 class="section-title" th:text="#{admin.users.title}">Użytkownicy (Aktywacja i usuwanie)</h3>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th th:text="#{common.id}">ID</th>
+                    <th th:text="#{admin.users.fullName}">Imię i nazwisko</th>
+                    <th th:text="#{registerForm.email}">Email</th>
+                    <th th:text="#{registerForm.phone}">Telefon</th>
+                    <th th:text="#{label.role}">Rola</th>
+                    <th th:text="#{common.status}">Status</th>
+                    <th th:text="#{common.actions}">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="u : ${users}">
+                    <td th:text="${u.id}"></td>
+                    <td th:text="${u.firstName} + ' ' + ${u.lastName}"></td>
+                    <td th:text="${u.email}"></td>
+                    <td th:text="${u.phone}"></td>
+                    <td th:text="#{${'registerForm.role.' + u.role.name()}}"></td>
+                    <td>
+                        <span th:if="${u.active}" class="status-active" th:text="#{common.active}">Aktywny</span>
+                        <span th:if="${!u.active}" class="status-inactive" th:text="#{common.inactive}">Nieaktywny</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <form th:action="@{/admin/user/status/{id}(id=${u.id})}" method="post" class="inline-form">
+                                <button type="submit" class="btn btn-green btn-action"
+                                        th:text="${u.active ? #messages.msg('common.deactivate') : #messages.msg('common.activate')}">Aktywuj</button>
+                            </form>
+                            <form th:action="@{/admin/user/delete/{id}(id=${u.id})}" method="post" class="inline-form">
+                                <button type="submit" class="btn btn-danger btn-action" th:text="#{common.delete}">Usuń</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section-box">
+        <div class="section-header-row">
+            <h3 class="section-title" th:text="#{admin.rooms.title}">Gabinety stomatologiczne</h3>
+            <button type="button" class="btn btn-green" onclick="document.getElementById('addRoomDialog').showModal()"
+                    th:text="#{admin.rooms.addBtn}">+ Dodaj gabinet</button>
+        </div>
+
+        <dialog id="addRoomDialog" closedby="any" aria-labelledby="addRoomTitle" class="modal-dialog-box">
+            <div class="modal-header">
+                <h4 id="addRoomTitle" class="modal-title" th:text="#{admin.rooms.addModalTitle}">Dodaj nowy gabinet</h4>
+                <button type="button" class="modal-close-btn" onclick="this.closest('dialog').close()">✕</button>
+            </div>
+            <form th:action="@{/admin/room/add}" th:object="${roomDto}" method="post">
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.rooms.nameLabel}">Nazwa gabinetu</label>
+                    <input type="text" th:field="*{name}" class="form-input" th:placeholder="#{admin.rooms.namePlaceholder}"
+                           minlength="1" maxlength="150" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.rooms.descLabel(5)}">Opis gabinetu (min. 5 znaków)</label>
+                    <input type="text" th:field="*{description}" class="form-input" th:placeholder="#{admin.rooms.descPlaceholder}"
+                           minlength="5" maxlength="150" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.rooms.renovationStartOptional}">Początek remontu (opcjonalnie)</label>
+                    <input type="datetime-local" th:field="*{renovationTimeStart}" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.rooms.renovationEndOptional}">Koniec remontu (opcjonalnie)</label>
+                    <input type="datetime-local" th:field="*{renovationTimeEnd}" class="form-input">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-mint" onclick="this.closest('dialog').close()" th:text="#{common.cancel}">Anuluj</button>
+                    <button type="submit" class="btn btn-green" th:text="#{admin.rooms.submitAdd}">Dodaj gabinet</button>
+                </div>
+            </form>
+        </dialog>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th th:text="#{common.id}">ID</th>
+                    <th th:text="#{common.name}">Nazwa</th>
+                    <th th:text="#{common.description}">Opis</th>
+                    <th th:text="#{admin.rooms.renovationStatus}">Status remontu</th>
+                    <th th:text="#{admin.rooms.renovationStart}">Początek remontu</th>
+                    <th th:text="#{admin.rooms.renovationEnd}">Koniec remontu</th>
+                    <th th:text="#{common.actions}">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="room : ${rooms}">
+                    <td th:text="${room.id}"></td>
+                    <td th:text="${room.name}"></td>
+                    <td th:text="${room.description}"></td>
+                    <td>
+                        <span th:if="${room.currentlyUnderRenovation}" class="status-inactive" th:text="#{admin.rooms.status.underRenovation}">W remoncie</span>
+                        <span th:if="${room.plannedRenovation}" class="status-pending" style="background-color: #fff3cd; color: #856404; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500;"
+                              th:text="#{admin.rooms.status.plannedRenovation}">Zaplanowany remont</span>
+                        <span th:if="${!room.currentlyUnderRenovation and !room.plannedRenovation}" class="status-active" th:text="#{admin.rooms.status.available}">Dostępny</span>
+                    </td>
+                    <td th:text="${room.renovationTimeStart != null ? #temporals.format(room.renovationTimeStart, 'dd-MM-yyyy HH:mm') : '-'}"></td>
+                    <td th:text="${room.renovationTimeEnd != null ? #temporals.format(room.renovationTimeEnd, 'dd-MM-yyyy HH:mm') : '-'}"></td>
+                    <td>
+                        <button type="button" class="btn btn-green btn-action"
+                                th:attr="onclick=|document.getElementById('editRoomDialog-${room.id}').showModal()|"
+                                th:text="#{admin.rooms.editBtn}">
+                            Edytuj / Remont
+                        </button>
+
+                        <dialog th:id="'editRoomDialog-' + ${room.id}" closedby="any" th:attr="aria-labelledby='editRoomTitle-' + ${room.id}" class="modal-dialog-box">
+                            <div class="modal-header">
+                                <h4 th:id="'editRoomTitle-' + ${room.id}" class="modal-title" th:text="#{admin.rooms.editModalTitle(${room.id})}">Edycja gabinetu</h4>
+                                <button type="button" class="modal-close-btn" onclick="this.closest('dialog').close()">✕</button>
+                            </div>
+                            <form th:action="@{/admin/room/update/{id}(id=${room.id})}" method="post">
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.rooms.nameLabel}">Nazwa gabinetu</label>
+                                    <input type="text" name="name" th:value="${room.name}" class="form-input"
+                                           minlength="1" maxlength="150" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.rooms.descLabel(5)}">Opis gabinetu (min. 5 znaków)</label>
+                                    <input type="text" name="description" th:value="${room.description}" class="form-input"
+                                           minlength="5" maxlength="150" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.rooms.renovationStart}">Początek remontu</label>
+                                    <input type="datetime-local" name="renovationTimeStart"
+                                           th:id="'renovationStartInput-' + ${room.id}"
+                                           th:value="${room.renovationTimeStart != null ? #temporals.format(room.renovationTimeStart, 'yyyy-MM-dd''T''HH:mm') : ''}"
+                                           class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.rooms.renovationEnd}">Koniec remontu</label>
+                                    <input type="datetime-local" name="renovationTimeEnd"
+                                           th:id="'renovationEndInput-' + ${room.id}"
+                                           th:value="${room.renovationTimeEnd != null ? #temporals.format(room.renovationTimeEnd, 'yyyy-MM-dd''T''HH:mm') : ''}"
+                                           class="form-input">
+                                    <button type="button" class="btn btn-blue" style="margin-top: 8px; font-size: 12px; padding: 5px 10px;"
+                                            th:attr="onclick=|document.getElementById('renovationStartInput-${room.id}').value=''; document.getElementById('renovationEndInput-${room.id}').value='';|"
+                                            th:text="#{admin.rooms.clearRenovationDates}">
+                                        Wyczyść daty remontu
+                                    </button>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" class="btn btn-mint" onclick="this.closest('dialog').close()" th:text="#{common.cancel}">Anuluj</button>
+                                    <button type="submit" class="btn btn-green" th:text="#{common.saveChanges}">Zapisz zmiany</button>
+                                </div>
+                            </form>
+                        </dialog>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section-box">
+        <div class="section-header-row">
+            <h3 class="section-title" th:text="#{admin.treatments.title}">Zabiegi i cennik</h3>
+            <button type="button" class="btn btn-green" onclick="document.getElementById('addTreatmentDialog').showModal()"
+                    th:text="#{admin.treatments.addBtn}">+ Dodaj zabieg</button>
+        </div>
+
+        <dialog id="addTreatmentDialog" closedby="any" aria-labelledby="addTreatmentTitle" class="modal-dialog-box">
+            <div class="modal-header">
+                <h4 id="addTreatmentTitle" class="modal-title" th:text="#{admin.treatments.addModalTitle}">Dodaj nowy zabieg</h4>
+                <button type="button" class="modal-close-btn" onclick="this.closest('dialog').close()">✕</button>
+            </div>
+            <form th:action="@{/admin/treatment/add}" th:object="${treatmentDto}" method="post">
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.treatments.nameLabel(3)}">Nazwa zabiegu (min. 3 znaki)</label>
+                    <input type="text" th:field="*{name}" class="form-input" th:placeholder="#{admin.treatments.namePlaceholder}"
+                           minlength="3" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.treatments.descLabel}">Opis zabiegu</label>
+                    <input type="text" th:field="*{description}" class="form-input" th:placeholder="#{admin.treatments.descPlaceholder}"
+                           minlength="3" maxlength="255" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.treatments.priceLabel(#{common.currency})}">Cena (PLN)</label>
+                    <input type="number" step="0.01" min="1" th:field="*{price}" class="form-input" th:placeholder="#{admin.treatments.pricePlaceholder}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{admin.treatments.durationLabel}">Szacowany czas trwania (minuty)</label>
+                    <input type="number" min="1"
+                           th:field="*{estimatedMinutes}" class="form-input" th:placeholder="#{admin.treatments.durationPlaceholder}" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-mint" onclick="this.closest('dialog').close()" th:text="#{common.cancel}">Anuluj</button>
+                    <button type="submit" class="btn btn-green" th:text="#{admin.treatments.submitAdd}">Dodaj zabieg</button>
+                </div>
+            </form>
+        </dialog>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th th:text="#{common.id}">ID</th>
+                    <th th:text="#{admin.treatments.nameCol}">Nazwa zabiegu</th>
+                    <th th:text="#{common.description}">Opis</th>
+                    <th th:text="#{common.price}">Cena</th>
+                    <th th:text="#{common.duration}">Czas</th>
+                    <th th:text="#{common.actions}">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="t : ${treatments}">
+                    <td th:text="${t.id}"></td>
+                    <td th:text="${#messages.msgOrNull('treatment.name.' + t.id) != null ? #messages.msg('treatment.name.' + t.id) : t.name}"></td>
+                    <td th:text="${#messages.msgOrNull('treatment.desc.' + t.id) != null ? #messages.msg('treatment.desc.' + t.id) : t.description}"></td>
+                    <td th:text="${t.price} + ' ' + #{common.currency}"></td>
+                    <td th:text="${t.estimatedMinutes} + ' ' + #{home.treatments.minutes}"></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-green btn-action"
+                                    th:attr="onclick=|document.getElementById('editTreatmentDialog-${t.id}').showModal()|"
+                                    th:text="#{common.edit}">
+                                Edytuj
+                            </button>
+                            <form th:action="@{/admin/treatment/delete/{id}(id=${t.id})}" method="post" class="inline-form">
+                                <button type="submit" class="btn btn-danger btn-action" th:text="#{common.delete}">Usuń</button>
+                            </form>
+                        </div>
+
+                        <dialog th:id="'editTreatmentDialog-' + ${t.id}" closedby="any" th:attr="aria-labelledby='editTreatmentTitle-' + ${t.id}" class="modal-dialog-box">
+                            <div class="modal-header">
+                                <h4 th:id="'editTreatmentTitle-' + ${t.id}" class="modal-title" th:text="#{admin.treatments.editModalTitle(${t.id})}">Edycja zabiegu</h4>
+                                <button type="button" class="modal-close-btn" onclick="this.closest('dialog').close()">✕</button>
+                            </div>
+                            <form th:action="@{/admin/treatment/update/{id}(id=${t.id})}" method="post">
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.treatments.nameReadonlyLabel}">Nazwa zabiegu (tylko do odczytu)</label>
+                                    <input type="text" name="name" th:value="${t.name}" class="form-input" readonly style="background-color: #f3f4f6; cursor: not-allowed;" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.treatments.descReadonlyLabel}">Opis zabiegu (tylko do odczytu)</label>
+                                    <input type="text" name="description" th:value="${t.description}" class="form-input" readonly style="background-color: #f3f4f6; cursor: not-allowed;" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.treatments.priceLabel(#{common.currency})}">Cena (PLN)</label>
+                                    <input type="number" step="0.01" min="1" name="price" th:value="${t.price}" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{admin.treatments.durationShortLabel}">Szacowany czas (minuty)</label>
+                                    <input type="number" min="1"
+                                           name="estimatedMinutes" th:value="${t.estimatedMinutes}" class="form-input" required>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" class="btn btn-mint" onclick="this.closest('dialog').close()" th:text="#{common.cancel}">Anuluj</button>
+                                    <button type="submit" class="btn btn-green" th:text="#{common.saveChanges}">Zapisz zmiany</button>
+                                </div>
+                            </form>
+                        </dialog>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section-box">
+        <div class="section-header-row">
+            <h3 class="section-title" th:text="#{admin.schedules.title}">Grafiki pracy lekarzy</h3>
+            <button type="button" class="btn btn-green" onclick="document.getElementById('addScheduleDialog').showModal()"
+                    th:text="#{admin.schedules.addBtn}">+ Dodaj grafik</button>
+        </div>
+
+        <dialog id="addScheduleDialog" closedby="any" aria-labelledby="addScheduleTitle" class="modal-dialog-box">
+            <div class="modal-header">
+                <h4 id="addScheduleTitle" class="modal-title" th:text="#{admin.schedules.addModalTitle}">Dodaj grafik pracy lekarza</h4>
+                <button type="button" class="modal-close-btn" onclick="this.closest('dialog').close()">✕</button>
+            </div>
+            <form th:action="@{/admin/schedule/add}" th:object="${scheduleDto}" method="post">
+                <div class="form-group">
+                    <label class="form-label" th:text="#{common.doctor}">Lekarz</label>
+                    <select th:field="*{doctorId}" class="form-select" required>
+                        <option th:each="d : ${dentists}" th:value="${d.id}" th:text="${d.firstName} + ' ' + ${d.lastName}"></option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{dentist.schedule.start}">Początek dyżuru</label>
+                    <input type="datetime-local" th:field="*{startDate}" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" th:text="#{dentist.schedule.end}">Koniec dyżuru</label>
+                    <input type="datetime-local" th:field="*{endDate}" class="form-input" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-mint" onclick="this.closest('dialog').close()" th:text="#{common.cancel}">Anuluj</button>
+                    <button type="submit" class="btn btn-green" th:text="#{admin.schedules.submitAdd}">Dodaj grafik</button>
+                </div>
+            </form>
+        </dialog>
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th th:text="#{common.id}">ID</th>
+                    <th th:text="#{common.doctor}">Lekarz</th>
+                    <th th:text="#{admin.schedules.workStart}">Początek pracy</th>
+                    <th th:text="#{admin.schedules.workEnd}">Koniec pracy</th>
+                    <th th:text="#{common.actions}">Akcje</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="s : ${schedules}">
+                    <td th:text="${s.id}"></td>
+                    <td th:text="${s.doctorFullName}"></td>
+                    <td th:text="${#temporals.format(s.startWorkDayHour, 'dd-MM-yyyy HH:mm')}"></td>
+                    <td th:text="${#temporals.format(s.endWorkDayHour, 'dd-MM-yyyy HH:mm')}"></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="btn btn-green btn-action"
+                                    th:attr="onclick=|document.getElementById('editScheduleDialog-${s.id}').showModal()|"
+                                    th:text="#{common.edit}">
+                                Edytuj
+                            </button>
+                            <form th:action="@{/admin/schedule/delete/{id}(id=${s.id})}" method="post" class="inline-form">
+                                <button type="submit" class="btn btn-danger btn-action" th:text="#{common.delete}">Usuń</button>
+                            </form>
+                        </div>
+
+                        <dialog th:id="'editScheduleDialog-' + ${s.id}" closedby="any" th:attr="aria-labelledby='editScheduleTitle-' + ${s.id}" class="modal-dialog-box">
+                            <div class="modal-header">
+                                <h4 th:id="'editScheduleTitle-' + ${s.id}" class="modal-title"
+                                    th:text="#{admin.schedules.editModalTitle(${s.id}, ${s.doctorFullName})}">Edycja grafiku</h4>
+                                <button type="button" class="modal-close-btn" onclick="this.closest('dialog').close()">✕</button>
+                            </div>
+                            <p style="font-size: 12px; color: #3E885B; margin-top: 0;" th:text="#{dentist.schedule.editHint}">
+                                Edycja możliwa maksymalnie do 1 dnia przed dyżurem (do północy). Jeśli w danym dniu są wizyty, grafiku nie można modyfikować ani usunąć.
+                            </p>
+                            <form th:action="@{/admin/schedule/update/{id}(id=${s.id})}" method="post">
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{dentist.schedule.start}">Początek dyżuru</label>
+                                    <input type="datetime-local" name="startDate"
+                                           th:value="${#temporals.format(s.startWorkDayHour, 'yyyy-MM-dd''T''HH:mm')}"
+                                           class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" th:text="#{dentist.schedule.end}">Koniec dyżuru</label>
+                                    <input type="datetime-local" name="endDate"
+                                           th:value="${#temporals.format(s.endWorkDayHour, 'yyyy-MM-dd''T''HH:mm')}"
+                                           class="form-input" required>
+                                </div>
+                                <div class="modal-actions">
+                                    <button type="button" class="btn btn-mint" onclick="this.closest('dialog').close()" th:text="#{common.cancel}">Anuluj</button>
+                                    <button type="submit" class="btn btn-green" th:text="#{common.saveChanges}">Zapisz zmiany</button>
+                                </div>
+                            </form>
+                        </dialog>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="pagination-bar" th:if="${scheduleTotalPages > 1}">
+            <a th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage - 1}, appointmentPage=${appointmentCurrentPage}, date=${selectedDate})}"
+               class="pagination-btn"
+               th:classappend="${scheduleCurrentPage == 0} ? 'disabled' : ''" th:text="#{pagination.previousArrow}">« Poprzednia</a>
+
+            <a th:each="i : ${#numbers.sequence(0, scheduleTotalPages - 1)}"
+               th:href="@{/admin/dashboard(schedulePage=${i}, appointmentPage=${appointmentCurrentPage}, date=${selectedDate})}"
+               th:text="${i + 1}"
+               class="pagination-btn"
+               th:classappend="${i == scheduleCurrentPage} ? 'active' : ''">1</a>
+
+            <a th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage + 1}, appointmentPage=${appointmentCurrentPage}, date=${selectedDate})}"
+               class="pagination-btn"
+               th:classappend="${scheduleCurrentPage + 1 >= scheduleTotalPages} ? 'disabled' : ''" th:text="#{pagination.nextArrow}">Następna »</a>
+
+            <span class="pagination-info" th:text="#{pagination.pageOf(${scheduleCurrentPage + 1}, ${scheduleTotalPages})}">Strona 1 z 2</span>
+        </div>
+    </div>
+
+    <div class="section-box">
+        <div class="section-header-row">
+            <h3 id="adminAppointmentsTitle" class="section-title"
+                th:text="${selectedDate != null ? #messages.msg('admin.appointments.titleByDate', #temporals.format(selectedDate, 'dd-MM-yyyy')) : #messages.msg('admin.appointments.titleAll')}">
+                Wszystkie wizyty, płatności i recepty
+            </h3>
+            <form th:action="@{/admin/dashboard}" method="get" class="action-buttons" style="margin: 0;">
+                <input type="hidden" name="schedulePage" th:value="${scheduleCurrentPage}">
+                <input type="date" name="date"
+                       th:value="${selectedDate != null ? #temporals.format(selectedDate, 'yyyy-MM-dd') : ''}"
+                       class="form-input" style="width: auto; padding: 6px 10px;">
+                <button type="submit" class="btn btn-green" th:text="#{admin.appointments.filterByDate}">Filtruj po dacie</button>
+                <a th:if="${selectedDate != null}" th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage})}"
+                   class="btn btn-mint" th:text="#{admin.appointments.showAll}">Pokaż wszystkie</a>
+            </form>
+        </div>
+
+        <div tabindex="0" role="region" aria-labelledby="adminAppointmentsTitle" class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th th:text="#{common.id}">ID</th>
+                        <th th:text="#{common.date}">Termin</th>
+                        <th th:text="#{common.patient}">Pacjent</th>
+                        <th th:text="#{common.doctor}">Lekarz</th>
+                        <th th:text="#{common.room}">Gabinet</th>
+                        <th th:text="#{common.amount}">Kwota</th>
+                        <th th:text="#{common.status}">Status</th>
+                        <th th:text="#{admin.appointments.pdfDocs}">Dokumenty PDF</th>
+                        <th th:text="#{common.actions}">Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="app : ${appointments}">
+                        <td th:text="${app.id}"></td>
+                        <td th:text="${#temporals.format(app.dateTime, 'dd-MM-yyyy HH:mm')}"></td>
+                        <td th:text="${app.patientFirstName} + ' ' + ${app.patientLastName}"></td>
+                        <td th:text="${app.dentistFirstName} + ' ' + ${app.dentistLastName}"></td>
+                        <td th:text="${app.roomName}"></td>
+                        <td th:text="${app.amount != null ? app.amount + ' ' + #messages.msg('common.currency') : '-'}"></td>
+                        <td>
+                            <span th:if="${app.status.name() == 'PENDING_PAYMENT'}" class="status-inactive" th:text="#{appointment.status.PENDING_PAYMENT}">Oczekuje na płatność</span>
+                            <span th:if="${app.status.name() == 'CONFIRMED'}" class="status-active" th:text="#{appointment.status.CONFIRMED}">Opłacona / Potwierdzona</span>
+                            <span th:if="${app.status.name() == 'COMPLETED'}" class="status-active" th:text="#{appointment.status.COMPLETED}">Zrealizowana</span>
+                            <span th:if="${app.status.name() == 'CANCELLED'}" class="status-inactive" th:text="#{appointment.status.CANCELLED}">Odwołana</span>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a th:if="${app.paid}"
+                                   th:href="@{/invoice/generate/{userId}(userId=${app.patientId}, appointmentId=${app.id})}"
+                                   target="_blank"
+                                   class="btn btn-blue" th:text="#{common.invoicePdf}">Faktura PDF</a>
+                                <a th:each="recId : ${app.recipeIds}"
+                                   th:href="@{/recipe/pdf/{id}(id=${recId})}"
+                                   target="_blank"
+                                   class="btn btn-mint"
+                                   th:text="#{common.recipePdf(${recId})}">Recepta PDF</a>
+                                <span th:if="${!app.paid and #lists.isEmpty(app.recipeIds)}">-</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <form th:if="${app.status.name() == 'PENDING_PAYMENT'}"
+                                      th:action="@{/admin/appointment/pay/{id}(id=${app.id})}"
+                                      method="post" class="inline-form">
+                                    <button type="submit" class="btn btn-green btn-action" th:text="#{common.pay}">Opłać</button>
+                                </form>
+
+                                <form th:if="${app.status.name() == 'CONFIRMED'}"
+                                      th:action="@{/admin/appointment/complete/{id}(id=${app.id})}"
+                                      method="post" class="inline-form">
+                                    <button type="submit" class="btn btn-green btn-action" th:text="#{common.complete}">Zrealizuj</button>
+                                </form>
+
+                                <form th:if="${(app.status.name() == 'PENDING_PAYMENT' or app.status.name() == 'CONFIRMED') and #temporals.createNow().isBefore(app.dateTime.minusMinutes(30))}"
+                                      th:action="@{/admin/appointment/cancel/{id}(id=${app.id})}"
+                                      method="post" class="inline-form">
+                                    <button type="submit" class="btn btn-danger btn-action" th:text="#{common.cancelAppointment}">Odwołaj</button>
+                                </form>
+
+                                <button th:if="${(app.status.name() == 'PENDING_PAYMENT' or app.status.name() == 'CONFIRMED') and !#temporals.createNow().isBefore(app.dateTime.minusMinutes(30))}"
+                                        type="button" class="btn btn-action" style="background-color: #d1d5db; color: #6b7280; cursor: not-allowed;"
+                                        disabled th:title="#{appointment.cancel.error.timeLimit}" th:text="#{common.cancelAppointment}">Odwołaj</button>
+
+                                <span th:if="${app.status.name() == 'COMPLETED' or app.status.name() == 'CANCELLED'}">-</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination-bar" th:if="${appointmentTotalPages > 1}">
+            <a th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage}, appointmentPage=${appointmentCurrentPage - 1}, date=${selectedDate})}"
+               class="pagination-btn"
+               th:classappend="${appointmentCurrentPage == 0} ? 'disabled' : ''" th:text="#{pagination.previous}">Poprzednia</a>
+
+            <a th:each="i : ${#numbers.sequence(0, appointmentTotalPages - 1)}"
+               th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage}, appointmentPage=${i}, date=${selectedDate})}"
+               th:text="${i + 1}"
+               class="pagination-btn"
+               th:classappend="${i == appointmentCurrentPage} ? 'active' : ''">1</a>
+
+            <a th:href="@{/admin/dashboard(schedulePage=${scheduleCurrentPage}, appointmentPage=${appointmentCurrentPage + 1}, date=${selectedDate})}"
+               class="pagination-btn"
+               th:classappend="${appointmentCurrentPage + 1 >= appointmentTotalPages} ? 'disabled' : ''" th:text="#{pagination.next}">Następna</a>
+
+            <span class="pagination-info" th:text="#{pagination.pageOf(${appointmentCurrentPage + 1}, ${appointmentTotalPages})}">Strona 1 z 2</span>
+        </div>
+    </div>
+
+</div>
+
+<script th:inline="javascript">
+    const statsUrl = /*[[@{/api/stats}]]*/ '/api/stats';
+    const currencyLabel = /*[[#{common.currency}]]*/ 'PLN';
+    const fetchedAtLabel = /*[[#{admin.stats.fetchedAt}]]*/ 'Data pobrania:';
+
+    function fetchClinicStats() {
+        fetch(statsUrl, { headers: { 'Accept': 'application/json' } })
+            .then(res => {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.json();
+            })
+            .then(data => {
+                document.getElementById('liveRevenue').textContent = data.totalRevenue + ' ' + currencyLabel;
+                if (data.paidRevenue !== undefined && document.getElementById('livePaidRevenue')) {
+                    document.getElementById('livePaidRevenue').textContent = data.paidRevenue + ' ' + currencyLabel;
+                }
+                document.getElementById('liveAppointments').textContent = data.totalAppointments;
+                if (Array.isArray(data.roomUsageStats)) {
+                    const tbody = document.getElementById('liveRoomStats');
+                    if (tbody) {
+                        const rows = data.roomUsageStats.map(stat => {
+                            const tr = document.createElement('tr');
+                            const tdRoom = document.createElement('td');
+                            tdRoom.textContent = stat.roomNumber;
+                            const tdCount = document.createElement('td');
+                            tdCount.textContent = stat.appointmentNumber;
+                            tr.append(tdRoom, tdCount);
+                            return tr;
+                        });
+                        tbody.replaceChildren(...rows);
+                    }
+                }
+                document.getElementById('restStatus').textContent = fetchedAtLabel + ' ' + new Date().toLocaleTimeString();
+            })
+            .catch(err => console.warn('Stats refresh failed:', err));
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchClinicStats);
+
+    if (!('closedBy' in HTMLDialogElement.prototype)) {
+        document.querySelectorAll('dialog').forEach((dialog) => {
+            dialog.addEventListener('click', (event) => {
+                if (event.target !== dialog) return;
+                const rect = dialog.getBoundingClientRect();
+                const isDialogContent = (
+                    rect.top <= event.clientY &&
+                    event.clientY <= rect.top + rect.height &&
+                    rect.left <= event.clientX &&
+                    event.clientX <= rect.left + rect.width
+                );
+                if (isDialogContent) return;
+                dialog.close();
+            });
+        });
+    }
+</script>
+</body>
+</html>
